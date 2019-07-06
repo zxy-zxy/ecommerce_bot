@@ -1,0 +1,9 @@
+python-telegram-bot==11.1.0
+redis==3.2.1
+requests==2.22.0
+pytest==5.0.0
+pytest-mock==1.10.4
+flake8==3.7.7
+black==19.3b0
+responses==0.10.6
+requests-mock==1.6.0
