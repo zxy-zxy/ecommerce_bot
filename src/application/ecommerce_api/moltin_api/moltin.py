@@ -12,7 +12,10 @@ from application.ecommerce_api.moltin_api.exceptions import (
     MoltinUnexpectedFormatResponseError,
     MoltinUnavailable,
 )
-from application.ecommerce_api.moltin_api.parse import parse_products_list_response, parse_product_response
+from application.ecommerce_api.moltin_api.parse import (
+    parse_products_list_response,
+    parse_product_response
+)
 
 
 def access_token_required(func):
@@ -96,8 +99,9 @@ class MoltinApiSession(Session):
 
 
 class MoltinApi:
-    get_products_list_url = 'v2/products'
+    get_products_list_url = 'v 2/products'
     get_product_url = '/v2/products/{}'
+    get_file_url = 'v2/files/{}'
     get_cart_url = 'v2/carts/{}'
     add_product_to_cart_url = 'v2/carts/{}/items'
 
@@ -110,10 +114,14 @@ class MoltinApi:
         data = self.session.get(MoltinApi.get_products_list_url, params=params)
         return parse_products_list_response(data)
 
-    def get_product(self, id: str) -> Product:
-        url = MoltinApi.get_product_url.format(id)
+    def get_product(self, product_id: str) -> Product:
+        url = MoltinApi.get_product_url.format(product_id)
         data = self.session.get(url)
         return parse_product_response(data)
+
+    def get_file(self, file_id: str):
+        url = MoltinApi.get_file_url.format(file_id)
+        response = self.session.get(url)
 
     def get_cart(self, cart_reference: str):
         url = MoltinApi.get_cart_url.format(cart_reference)

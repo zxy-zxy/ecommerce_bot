@@ -17,9 +17,12 @@ class TelegramBot:
         self.updater = Updater(token=token)
         bot_handlers = TelegramBotHandlers(moltin_api)
         dispatcher = self.updater.dispatcher
-        dispatcher.add_handler(CallbackQueryHandler(bot_handlers.handle_use_reply))
-        dispatcher.add_handler(MessageHandler(Filters.text, bot_handlers.handle_use_reply))
-        dispatcher.add_handler(CommandHandler('start', bot_handlers.handle_use_reply))
+        dispatcher.add_handler(
+            CallbackQueryHandler(bot_handlers.handle_use_reply))
+        dispatcher.add_handler(
+            MessageHandler(Filters.text, bot_handlers.handle_use_reply))
+        dispatcher.add_handler(
+            CommandHandler('start', bot_handlers.handle_use_reply))
 
     def start(self):
         self.updater.start_polling()
@@ -77,8 +80,14 @@ class TelegramBotHandlers:
     def handle_menu(self, bot, update):
         query = update.callback_query
 
+        product = self.moltin_api.get_product(query.data)
+
         bot.edit_message_text(
-            text="Selected option: {}".format(query.data),
+            text='{}\n{}\n{}'.format(
+                product.name,
+                product.formatted_price,
+                product.description
+            ),
             chat_id=query.message.chat_id,
             message_id=query.message.message_id,
         )

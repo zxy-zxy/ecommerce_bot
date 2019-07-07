@@ -30,6 +30,12 @@ def parse_product_response(dct: Dict) -> Union[None, Product]:
         formatted_price = None
         currency = None
 
+    product_relationships = dct['relationships']
+    try:
+        main_image_id = product_relationships['main_image']['data']['id']
+    except KeyError:
+        main_image_id = None
+
     product = Product(
         description=dct['description'],
         id=dct['id'],
@@ -39,5 +45,6 @@ def parse_product_response(dct: Dict) -> Union[None, Product]:
         slug=dct['slug'],
         formatted_price=formatted_price,
         currency=currency,
+        main_image_id=main_image_id
     )
     return product

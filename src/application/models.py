@@ -1,3 +1,4 @@
+from typing import Union
 from dataclasses import dataclass
 from decimal import Decimal
 import re
@@ -11,10 +12,11 @@ class Product:
     type: str
     name: str
     description: str
-    formatted_price: str
-    currency: str
     slug: str
     sku: str
+    currency: Union[str, None] = None
+    formatted_price: Union[str, None] = None
+    main_image_id: Union[str, None] = None
 
     @property
     def price(self) -> Decimal:
