@@ -10,14 +10,13 @@ services:
     env_file:
       - .env
     command:
-      python -m pytest
-#      python /shop_bot/src/manage.py
+      python /shop_bot/src/manage.py
     volumes:
       - ./src:/shop_bot/src/
-#    depends_on:
-#     - redis
-#
-#  redis:
-#    image: redis
-#    ports:
-#      - "6379:6379"
+    depends_on:
+     - redis
+
+  redis:
+    image: redis
+    ports:
+      - "6379:6379"

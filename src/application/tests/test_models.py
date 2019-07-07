@@ -1,7 +1,7 @@
 import uuid
 import decimal
 
-from application.ecommerce_api.models import Product
+from application.models import Product
 
 
 class TestProductModel:
@@ -14,7 +14,7 @@ class TestProductModel:
             description='New product',
             currency='USD',
             slug='new-product',
-            sku='new-product'
+            sku='new-product',
         )
         print(product)
         assert product.price == decimal.Decimal(243.50)

@@ -2,23 +2,33 @@ import pprint
 import os
 import logging
 
-from application.ecommerce_api.motlin_api.motlin import MotlinApiSession, MotlinApi
+import import_string
+
+from application.ecommerce_api.moltin_api.moltin import MoltinApiSession, MoltinApi
+from application.database import RedisStorage
+from application.bot.telegram_bot import TelegramBot
 from config import setup_logging
 
 logger = logging.getLogger(__name__)
 
 
 def main():
+    app_config_name = os.getenv('APP_SETTINGS')
+    app_config = import_string(app_config_name)
+
     setup_logging()
 
-    api_url = 'https://api.moltin.com'
-    client_id = os.getenv('MOLTIN_CLIENT_ID')
-    client_secret = os.getenv('MOLTIN_CLIENT_SECRET')
+    RedisStorage.initialize(**app_config.REDIS_SETTINGS)
 
-    api_session = MotlinApiSession(api_url, client_id, client_secret)
+    moltin_api_session = MoltinApiSession(
+        app_config.MOLTIN_API_URL,
+        app_config.MOLTIN_CLIENT_ID,
+        app_config.MOLTIN_CLIENT_SECRET
+    )
+    moltin_api = MoltinApi(moltin_api_session)
 
-    motlin = MotlinApi(api_session)
-    pprint.pprint(motlin.get_products())
+    telegram_bot = TelegramBot(app_config.TELEGRAM_BOT_TOKEN, moltin_api)
+    telegram_bot.start()
 
 
 if __name__ == '__main__':

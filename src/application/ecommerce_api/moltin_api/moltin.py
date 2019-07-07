@@ -1,13 +1,18 @@
 from typing import List
 import functools
 import time
+from json import JSONDecodeError
 
 import requests
 from requests import Session
 
-from application.ecommerce_api.models import Product
-from application.ecommerce_api.motlin_api.exceptions import MotlinApiError, MotlinUnavailable
-from application.ecommerce_api.motlin_api.parse import parse_get_products_response
+from application.models import Product
+from application.ecommerce_api.moltin_api.exceptions import (
+    MoltinApiError,
+    MoltinUnexpectedFormatResponseError,
+    MoltinUnavailable,
+)
+from application.ecommerce_api.moltin_api.parse import parse_products_list_response, parse_product_response
 
 
 def access_token_required(func):
@@ -22,54 +27,49 @@ def access_token_required(func):
     return wrapped
 
 
-class MotlinApiSession(Session):
+class MoltinApiSession(Session):
     oauth_url = 'oauth/access_token'
 
     def __init__(self, root_url: str, client_id: str, client_secret: str):
-        super(MotlinApiSession, self).__init__()
+        super(MoltinApiSession, self).__init__()
         self.root_url = root_url.rstrip('/')
         self.client_id = client_id
         self.client_secret = client_secret
         self.access_token = None
         self.access_token_expires_in = None
 
-    @access_token_required
     def get(self, url, **kwargs):
-        url = '{}/{}'.format(self.root_url, url.lstrip('/'))
-        try:
-            response = super(MotlinApiSession, self).get(url, **kwargs)
-            response.raise_for_status()
-        except (requests.ConnectionError, requests.Timeout) as e:
-            raise MotlinUnavailable() from e
-        except requests.HTTPError as e:
-            response_dict = response.json()
-            raise MotlinApiError(
-                response_dict['errors'][0]['status'],
-                response_dict['errors'][0]['title'],
-                response.url
-            ) from e
-        return response
+        return self._make_request('get', url, **kwargs)
+
+    def post(self, url, data=None, json=None, **kwargs):
+        return self._make_request('post', url, data=data, json=json, **kwargs)
 
     @access_token_required
-    def post(self, url, data=None, json=None, **kwargs):
+    def _make_request(self, method, url, **kwargs):
+        method = getattr(super(MoltinApiSession, self), method)
         url = '{}/{}'.format(self.root_url, url.lstrip('/'))
         try:
-            response = super(MotlinApiSession, self).post(url, data, json, **kwargs)
+            response = method(url, **kwargs)
             response.raise_for_status()
         except (requests.ConnectionError, requests.Timeout) as e:
-            raise MotlinUnavailable() from e
+            raise MoltinUnavailable() from e
         except requests.HTTPError as e:
             response_dict = response.json()
-            raise MotlinApiError(
+            raise MoltinApiError(
                 response_dict['errors'][0]['status'],
                 response_dict['errors'][0]['title'],
-                response.url
+                response.url,
             ) from e
-        return response
+
+        try:
+            response = response.json()
+            return response['data']
+        except (JSONDecodeError, KeyError) as e:
+            raise MoltinUnexpectedFormatResponseError(str(e)) from e
 
     def _update_access_token(self):
 
-        url = '{}/{}'.format(self.root_url, MotlinApiSession.oauth_url)
+        url = '{}/{}'.format(self.root_url, MoltinApiSession.oauth_url)
 
         data = {
             'client_id': self.client_id,
@@ -80,49 +80,49 @@ class MotlinApiSession(Session):
             response = requests.post(url, data=data)
             response.raise_for_status()
         except (requests.ConnectionError, requests.Timeout) as e:
-            raise MotlinUnavailable() from e
-        except requests.HTTPError as e:
+            raise MoltinUnavailable() from e
+        except requests.HTTPError:
             response_dict = response.json()
-            raise MotlinApiError(
+            raise MoltinApiError(
                 response_dict['errors'][0]['status'],
                 response_dict['errors'][0]['title'],
-                response.url
+                response.url,
             )
 
         response_dict = response.json()
         self.access_token_expires_in = response_dict['expires']
         self.access_token = response_dict['access_token']
-        self.headers.update({
-            'Authorization': 'Bearer: {}'.format(self.access_token)
-        })
+        self.headers.update({'Authorization': 'Bearer: {}'.format(self.access_token)})
 
 
-class MotlinApi:
-    products_list_url = 'v2/products'
+class MoltinApi:
+    get_products_list_url = 'v2/products'
+    get_product_url = '/v2/products/{}'
     get_cart_url = 'v2/carts/{}'
     add_product_to_cart_url = 'v2/carts/{}/items'
 
-    def __init__(self, session: MotlinApiSession):
+    def __init__(self, session: MoltinApiSession):
         self.session = session
 
     def get_products(self, limit=100) -> List[Product]:
-        params = {
-            'page[limit]': limit
-        }
+        params = {'page[limit]': limit}
 
-        response = self.session.get(MotlinApi.products_list_url, params=params)
-        return parse_get_products_response(response.json())
+        data = self.session.get(MoltinApi.get_products_list_url, params=params)
+        return parse_products_list_response(data)
+
+    def get_product(self, id: str) -> Product:
+        url = MoltinApi.get_product_url.format(id)
+        data = self.session.get(url)
+        return parse_product_response(data)
 
     def get_cart(self, cart_reference: str):
-        url = MotlinApi.get_cart_url.format(cart_reference)
-        response = self.session.get(url)
-        return response.json()
+        url = MoltinApi.get_cart_url.format(cart_reference)
+        data = self.session.get(url)
+        return data
 
     def add_product_to_cart(self, cart_reference: str, product_id: str, quantity: int):
-        url = MotlinApi.add_product_to_cart_url.format(cart_reference)
-        response = self.session.post(url, json={
-            'quantity': quantity,
-            'type': 'cart_item',
-            'id': product_id
-        })
-        return response.json()
+        url = MoltinApi.add_product_to_cart_url.format(cart_reference)
+        data = self.session.post(
+            url, json={'quantity': quantity, 'type': 'cart_item', 'id': product_id}
+        )
+        return data

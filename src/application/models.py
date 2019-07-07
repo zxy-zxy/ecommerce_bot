@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from decimal import Decimal
 import re
 
+from application.database import RedisStorage
+
 
 @dataclass
 class Product:
@@ -22,3 +24,14 @@ class Product:
 @dataclass
 class AddProductToCart:
     id: str
+
+
+class User:
+    def __init__(self, user_id: str):
+        self.user_id = user_id
+
+    def save_state_to_db(self, state):
+        return RedisStorage.set(self.user_id, state)
+
+    def get_state_from_db(self):
+        return RedisStorage.get(self.user_id)
