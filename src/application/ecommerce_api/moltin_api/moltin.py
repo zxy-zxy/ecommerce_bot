@@ -1,6 +1,7 @@
 from typing import List
 import functools
 import time
+import logging
 from json import JSONDecodeError
 
 import requests
@@ -14,8 +15,11 @@ from application.ecommerce_api.moltin_api.exceptions import (
 )
 from application.ecommerce_api.moltin_api.parse import (
     parse_products_list_response,
-    parse_product_response
+    parse_product_response,
+    parse_file_response,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def access_token_required(func):
@@ -41,6 +45,22 @@ class MoltinApiSession(Session):
         self.access_token = None
         self.access_token_expires_in = None
 
+    def __repr__(self):
+        return self.__str__()
+
+    def __str__(self):
+        str_repr = (
+            'client id: {}, client secret: {},'
+            'access token: {},'
+            'access_token_expires_in: {} '.format(
+                self.client_id,
+                self.client_secret,
+                self.access_token,
+                self.access_token_expires_in
+            )
+        )
+        return str_repr
+
     def get(self, url, **kwargs):
         return self._make_request('get', url, **kwargs)
 
@@ -50,7 +70,9 @@ class MoltinApiSession(Session):
     @access_token_required
     def _make_request(self, method, url, **kwargs):
         method = getattr(super(MoltinApiSession, self), method)
+
         url = '{}/{}'.format(self.root_url, url.lstrip('/'))
+
         try:
             response = method(url, **kwargs)
             response.raise_for_status()
@@ -66,9 +88,11 @@ class MoltinApiSession(Session):
 
         try:
             response = response.json()
+            logger.debug('json response from {}: {}'.format(url, response))
             return response['data']
         except (JSONDecodeError, KeyError) as e:
-            raise MoltinUnexpectedFormatResponseError(str(e)) from e
+            raise MoltinUnexpectedFormatResponseError('error: {}, data: {}'.format(
+                str(e), response)) from e
 
     def _update_access_token(self):
 
@@ -99,7 +123,7 @@ class MoltinApiSession(Session):
 
 
 class MoltinApi:
-    get_products_list_url = 'v 2/products'
+    get_products_list_url = 'v2/products'
     get_product_url = '/v2/products/{}'
     get_file_url = 'v2/files/{}'
     get_cart_url = 'v2/carts/{}'
@@ -110,18 +134,18 @@ class MoltinApi:
 
     def get_products(self, limit=100) -> List[Product]:
         params = {'page[limit]': limit}
-
         data = self.session.get(MoltinApi.get_products_list_url, params=params)
         return parse_products_list_response(data)
 
-    def get_product(self, product_id: str) -> Product:
+    def get_product_by_id(self, product_id: str) -> Product:
         url = MoltinApi.get_product_url.format(product_id)
         data = self.session.get(url)
         return parse_product_response(data)
 
-    def get_file(self, file_id: str):
+    def get_file_by_id(self, file_id: str):
         url = MoltinApi.get_file_url.format(file_id)
-        response = self.session.get(url)
+        data = self.session.get(url)
+        return parse_file_response(data)
 
     def get_cart(self, cart_reference: str):
         url = MoltinApi.get_cart_url.format(cart_reference)

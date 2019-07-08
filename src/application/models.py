@@ -1,9 +1,15 @@
-from typing import Union
+from typing import Union, List
 from dataclasses import dataclass
 from decimal import Decimal
 import re
 
 from application.database import RedisStorage
+
+
+@dataclass
+class ProductVariation:
+    id: str
+    name: str
 
 
 @dataclass
@@ -17,6 +23,7 @@ class Product:
     currency: Union[str, None] = None
     formatted_price: Union[str, None] = None
     main_image_id: Union[str, None] = None
+    variations: Union[List[ProductVariation], None] = None
 
     @property
     def price(self) -> Decimal:
@@ -24,8 +31,11 @@ class Product:
 
 
 @dataclass
-class AddProductToCart:
+class File:
+    type: str
     id: str
+    link: str
+    file_name: str
 
 
 class User:

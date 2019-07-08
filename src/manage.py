@@ -26,7 +26,6 @@ def main():
         app_config.MOLTIN_CLIENT_SECRET
     )
     moltin_api = MoltinApi(moltin_api_session)
-    print(moltin_api.get_products())
 
     telegram_bot = TelegramBot(app_config.TELEGRAM_BOT_TOKEN, moltin_api)
     telegram_bot.start()

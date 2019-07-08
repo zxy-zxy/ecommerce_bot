@@ -15,14 +15,15 @@ from application.bot.utils import chunks
 class TelegramBot:
     def __init__(self, token: str, moltin_api: MoltinApi):
         self.updater = Updater(token=token)
-        bot_handlers = TelegramBotHandlers(moltin_api)
+        handlers = TelegramBotHandlers(moltin_api)
         dispatcher = self.updater.dispatcher
+
         dispatcher.add_handler(
-            CallbackQueryHandler(bot_handlers.handle_use_reply))
+            CallbackQueryHandler(handlers.handle_use_reply))
         dispatcher.add_handler(
-            MessageHandler(Filters.text, bot_handlers.handle_use_reply))
+            CommandHandler('start', handlers.handle_use_reply))
         dispatcher.add_handler(
-            CommandHandler('start', bot_handlers.handle_use_reply))
+            MessageHandler(Filters.text, handlers.handle_use_reply))
 
     def start(self):
         self.updater.start_polling()
@@ -49,7 +50,11 @@ class TelegramBotHandlers:
         else:
             user_state = user.get_state_from_db()
 
-        states_functions = {'HANDLE_START': self.handle_start, 'HANDLE_MENU': self.handle_menu}
+        states_functions = {
+            'HANDLE_START': self.handle_start,
+            'HANDLE_MENU': self.handle_menu,
+            'HANDLE_PRODUCT': self.handle_product
+        }
         state_handler = states_functions[user_state]
 
         try:
@@ -73,23 +78,72 @@ class TelegramBotHandlers:
         ]
 
         reply_markup = InlineKeyboardMarkup(keyboard)
+        text = 'Please choose: '
+        if update.message:
+            update.message.reply_text(text, reply_markup=reply_markup)
+        else:
+            query = update.callback_query
+            bot.send_message(
+                query.message.chat_id,
+                text,
+                reply_markup=reply_markup
+            )
 
-        update.message.reply_text('Please choose:', reply_markup=reply_markup)
         return 'HANDLE_MENU'
 
     def handle_menu(self, bot, update):
         query = update.callback_query
 
-        product = self.moltin_api.get_product(query.data)
+        product = self.moltin_api.get_product_by_id(query.data)
 
-        bot.edit_message_text(
-            text='{}\n{}\n{}'.format(
-                product.name,
-                product.formatted_price,
-                product.description
-            ),
-            chat_id=query.message.chat_id,
-            message_id=query.message.message_id,
+        text = '{}\n{}\n{}'.format(
+            product.name,
+            product.formatted_price,
+            product.description
         )
 
-        return 'HANDLE_START'
+        if product.variations is None:
+            add_to_cart_options = [
+                InlineKeyboardButton('Add to cart', callback_data=product.id)
+            ]
+        else:
+            add_to_cart_options = [
+                InlineKeyboardButton(variation.name, callback_data=variation.id)
+                for variation in product.variations
+            ]
+
+        keyboard = [
+            add_to_cart_options,
+            [
+                InlineKeyboardButton('Return', callback_data='return'),
+            ]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
+        if product.main_image_id is None:
+            bot.send_message(
+                query.message.chat_id,
+                text,
+                reply_markup=reply_markup
+            )
+        else:
+            file = self.moltin_api.get_file_by_id(
+                product.main_image_id)
+
+            bot.send_photo(
+                query.message.chat_id,
+                photo=file.link,
+                caption=text,
+                reply_markup=reply_markup
+            )
+
+        return 'HANDLE_PRODUCT'
+
+    def handle_product(self, bot, update):
+
+        query = update.callback_query
+
+        bot.delete_message(chat_id=query.message.chat_id, message_id=query.message.message_id)
+
+        if query.data == 'return':
+            return self.handle_start(bot, update)
