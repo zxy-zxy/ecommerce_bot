@@ -1,0 +1,9 @@
+{
+  "errors": [
+    {
+      "status": 400,
+      "title": "Insufficient stock",
+      "detail": "There is not enough stock to add Super massive black hole to your cart"
+    }
+  ]
+}

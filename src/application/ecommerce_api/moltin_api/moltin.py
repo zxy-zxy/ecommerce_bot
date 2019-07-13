@@ -17,6 +17,7 @@ from application.ecommerce_api.moltin_api.parse import (
     parse_products_list_response,
     parse_product_response,
     parse_file_response,
+    parse_add_product_to_cart_response
 )
 
 logger = logging.getLogger(__name__)
@@ -80,16 +81,24 @@ class MoltinApiSession(Session):
             raise MoltinUnavailable() from e
         except requests.HTTPError as e:
             response_dict = response.json()
+
+            error = response_dict['errors'][0]
+            error_status = error['status']
+            error_title = error['title']
+            error_detail = error['detail'] if 'detail' in error.keys() else None
+
+            logger.debug('json response from {} with status code {} : {}'.format(
+                url, response.status_code, response_dict))
+
             raise MoltinApiError(
-                response_dict['errors'][0]['status'],
-                response_dict['errors'][0]['title'],
-                response.url,
+                response.url, error_status, error_title, error_detail
             ) from e
 
         try:
-            response = response.json()
-            logger.debug('json response from {}: {}'.format(url, response))
-            return response['data']
+            response_dict = response.json()
+            logger.debug('json response from {} with status code {} : {}'.format(
+                url, response.status_code, response_dict))
+            return response_dict['data']
         except (JSONDecodeError, KeyError) as e:
             raise MoltinUnexpectedFormatResponseError('error: {}, data: {}'.format(
                 str(e), response)) from e
@@ -108,13 +117,17 @@ class MoltinApiSession(Session):
             response.raise_for_status()
         except (requests.ConnectionError, requests.Timeout) as e:
             raise MoltinUnavailable() from e
-        except requests.HTTPError:
+        except requests.HTTPError as e:
             response_dict = response.json()
+
+            error = response_dict['errors'][0]
+            error_status = error['status']
+            error_title = error['title']
+            error_detail = error['detail'] if 'detail' in error.keys() else None
+
             raise MoltinApiError(
-                response_dict['errors'][0]['status'],
-                response_dict['errors'][0]['title'],
-                response.url,
-            )
+                response.url, error_status, error_title, error_detail
+            ) from e
 
         response_dict = response.json()
         self.access_token_expires_in = response_dict['expires']
@@ -127,7 +140,7 @@ class MoltinApi:
     get_product_url = '/v2/products/{}'
     get_file_url = 'v2/files/{}'
     get_cart_url = 'v2/carts/{}'
-    add_product_to_cart_url = 'v2/carts/{}/items'
+    cart_products_url = 'v2/carts/{}/items'
 
     def __init__(self, session: MoltinApiSession):
         self.session = session
@@ -152,9 +165,14 @@ class MoltinApi:
         data = self.session.get(url)
         return data
 
-    def add_product_to_cart(self, cart_reference: str, product_id: str, quantity: int):
-        url = MoltinApi.add_product_to_cart_url.format(cart_reference)
-        data = self.session.post(
-            url, json={'quantity': quantity, 'type': 'cart_item', 'id': product_id}
-        )
+    def get_cart_products(self, cart_reference: str):
+        url = MoltinApi.cart_products_url.format(cart_reference)
+        data = self.session.get(url)
         return data
+
+    def add_product_to_cart(self, cart_reference: str, product_id: str, quantity: int = 1):
+        url = MoltinApi.cart_products_url.format(cart_reference)
+        data = self.session.post(
+            url, json={'data': {'quantity': quantity, 'type': 'cart_item', 'id': product_id}}
+        )
+        return parse_add_product_to_cart_response(data[0])

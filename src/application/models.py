@@ -7,12 +7,6 @@ from application.database import RedisStorage
 
 
 @dataclass
-class ProductVariation:
-    id: str
-    name: str
-
-
-@dataclass
 class Product:
     id: str
     type: str
@@ -23,7 +17,6 @@ class Product:
     currency: Union[str, None] = None
     formatted_price: Union[str, None] = None
     main_image_id: Union[str, None] = None
-    variations: Union[List[ProductVariation], None] = None
 
     @property
     def price(self) -> Decimal:
@@ -36,6 +29,13 @@ class File:
     id: str
     link: str
     file_name: str
+
+
+@dataclass
+class ProductInCart:
+    cart_id: str
+    product_id: str
+    quantity: int
 
 
 class User:

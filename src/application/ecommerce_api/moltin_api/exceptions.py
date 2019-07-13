@@ -11,10 +11,12 @@ class MoltinUnexpectedFormatResponseError(MoltinError):
 
 
 class MoltinApiError(MoltinError):
-    def __init__(self, status, message, url):
-        self.code = status
-        self.message = message
+    def __init__(self, url, status, title, detail):
         self.url = url
+        self.code = status
+        self.title = title
+        self.detail = detail
 
     def __str__(self):
-        return '{} with code {} from {}'.format(self.message, self.code, self.url)
+        return 'status: {}, title: {}, detail: {} from {}'.format(
+            self.code, self.title, self.detail, self.url)

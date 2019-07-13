@@ -1,3 +1,6 @@
+import json
+from functools import wraps
+
 from telegram.ext import (
     CommandHandler,
     MessageHandler,
@@ -29,7 +32,39 @@ class TelegramBot:
         self.updater.start_polling()
 
 
+def check_callback_query_exists(func):
+    """
+    User ignored keyboard options and sent random string.
+    Let's return him back to the start menu
+    """
+
+    @wraps(func)
+    def wrapped(self, bot, update):
+        query = update.callback_query
+        if query is None:
+            bot.delete_message(
+                chat_id=update.message.chat_id,
+                message_id=update.message.message_id
+            )
+            return 'HANDLE_MENU'
+        return func(self, bot, update)
+
+    return wrapped
+
+
 class TelegramBotHandlers:
+    CALLBACK_RETURN = 'return'
+    CALLBACK_CART = 'cart'
+    available_quantity_options = ['1 pc', '2 pcs', '5 pcs']
+
+    @staticmethod
+    def get_button_cart():
+        return InlineKeyboardButton('Cart', callback_data=TelegramBotHandlers.CALLBACK_CART)
+
+    @staticmethod
+    def get_button_return():
+        return InlineKeyboardButton('Return', callback_data=TelegramBotHandlers.CALLBACK_RETURN)
+
     def __init__(self, moltin_api: MoltinApi):
         self.moltin_api = moltin_api
 
@@ -53,7 +88,8 @@ class TelegramBotHandlers:
         states_functions = {
             'HANDLE_START': self.handle_start,
             'HANDLE_MENU': self.handle_menu,
-            'HANDLE_PRODUCT': self.handle_product
+            'HANDLE_PRODUCT': self.handle_product,
+            'HANDLE_CART': self.handle_cart
         }
         state_handler = states_functions[user_state]
 
@@ -65,11 +101,79 @@ class TelegramBotHandlers:
 
     def handle_start(self, bot, update):
 
+        chat_id = update.message.chat_id if update.message \
+            else update.callback_query.message.chat_id
+
+        self.show_menu(bot, chat_id)
+
+        return 'HANDLE_MENU'
+
+    @check_callback_query_exists
+    def handle_menu(self, bot, update):
+        query = update.callback_query
+        chat_id = query.message.chat_id
+
+        if query.data == TelegramBotHandlers.CALLBACK_CART:
+            self.show_cart(bot, chat_id)
+            return 'HANDLE_CART'
+
+        product_id = query.data
+
+        bot.delete_message(
+            chat_id=query.message.chat_id,
+            message_id=query.message.message_id
+        )
+
+        self.show_product(bot, chat_id, product_id)
+
+        return 'HANDLE_PRODUCT'
+
+    @check_callback_query_exists
+    def handle_product(self, bot, update):
+
+        query = update.callback_query
+        chat_id = query.message.chat_id
+        message_id = query.message.message_id
+
+        bot.delete_message(
+            chat_id=chat_id,
+            message_id=message_id
+        )
+
+        if query.data == TelegramBotHandlers.CALLBACK_RETURN:
+            return 'HANDLE_START'
+        elif query.data == TelegramBotHandlers.CALLBACK_CART:
+            self.show_cart(bot, chat_id)
+            return 'HANDLE_CART'
+
+        product_id = query.data
+
+        product_presentation = deserialize_product_presentation_from_callback(
+            product_id)
+
+        self.moltin_api.add_product_to_cart(
+            chat_id,
+            product_presentation['id'],
+            quantity=int(product_presentation['qty'])
+        )
+
+        self.moltin_api.get_cart(query.message.chat_id)
+        text = 'Item has been successfully added to cart. Please, continue:'
+        self.show_menu(bot, chat_id, text)
+
+        return 'HANDLE_MENU'
+
+    def handle_cart(self, bot, update):
+        query = update.callback_query
+        chat_id = query.message.chat_id
+
+    def show_menu(self, bot, chat_id, text=None):
+
         keyboard_row_buttons_width = 2
         products = self.moltin_api.get_products()
         products_chunks = chunks(products, keyboard_row_buttons_width)
 
-        keyboard = [
+        products_options = [
             [
                 InlineKeyboardButton(product.name, callback_data=product.id)
                 for product in product_chunk
@@ -77,24 +181,23 @@ class TelegramBotHandlers:
             for product_chunk in products_chunks
         ]
 
+        keyboard = [
+            *products_options,
+            [TelegramBotHandlers.get_button_cart()]
+        ]
+
         reply_markup = InlineKeyboardMarkup(keyboard)
-        text = 'Please choose: '
-        if update.message:
-            update.message.reply_text(text, reply_markup=reply_markup)
-        else:
-            query = update.callback_query
-            bot.send_message(
-                query.message.chat_id,
-                text,
-                reply_markup=reply_markup
-            )
+        if text is None:
+            text = 'Please choose:'
+        bot.send_message(
+            chat_id,
+            text,
+            reply_markup=reply_markup
+        )
 
-        return 'HANDLE_MENU'
+    def show_product(self, bot, chat_id, product_id):
 
-    def handle_menu(self, bot, update):
-        query = update.callback_query
-
-        product = self.moltin_api.get_product_by_id(query.data)
+        product = self.moltin_api.get_product_by_id(product_id)
 
         text = '{}\n{}\n{}'.format(
             product.name,
@@ -102,48 +205,52 @@ class TelegramBotHandlers:
             product.description
         )
 
-        if product.variations is None:
-            add_to_cart_options = [
-                InlineKeyboardButton('Add to cart', callback_data=product.id)
-            ]
-        else:
-            add_to_cart_options = [
-                InlineKeyboardButton(variation.name, callback_data=variation.id)
-                for variation in product.variations
-            ]
+        products_quantity_options = [
+            InlineKeyboardButton(
+                quantity_option,
+                callback_data=serialize_product_presentation_for_callback(
+                    product, quantity_option)
+            )
+            for quantity_option in TelegramBotHandlers.available_quantity_options
+        ]
 
         keyboard = [
-            add_to_cart_options,
+            products_quantity_options,
             [
-                InlineKeyboardButton('Return', callback_data='return'),
+                TelegramBotHandlers.get_button_cart(),
+                TelegramBotHandlers.get_button_return()
             ]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
 
         if product.main_image_id is None:
             bot.send_message(
-                query.message.chat_id,
+                chat_id,
                 text,
                 reply_markup=reply_markup
             )
         else:
-            file = self.moltin_api.get_file_by_id(
-                product.main_image_id)
-
+            file = self.moltin_api.get_file_by_id(product.main_image_id)
             bot.send_photo(
-                query.message.chat_id,
+                chat_id,
                 photo=file.link,
                 caption=text,
                 reply_markup=reply_markup
             )
 
-        return 'HANDLE_PRODUCT'
+    def show_cart(self, bot, chat_id):
+        bot.send_message(
+            chat_id,
+            'This is cart content',
+        )
 
-    def handle_product(self, bot, update):
 
-        query = update.callback_query
+def serialize_product_presentation_for_callback(product, quantity_option):
+    quantity, unit_of_measure = quantity_option.split()
+    data = json.dumps({'id': product.id, 'qty': quantity})
+    return data
 
-        bot.delete_message(chat_id=query.message.chat_id, message_id=query.message.message_id)
 
-        if query.data == 'return':
-            return self.handle_start(bot, update)
+def deserialize_product_presentation_from_callback(encoded_string):
+    data = json.loads(encoded_string)
+    return data

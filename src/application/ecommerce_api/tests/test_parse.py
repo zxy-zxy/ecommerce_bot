@@ -6,6 +6,7 @@ from application.models import Product
 from application.ecommerce_api.moltin_api.parse import (
     parse_product_response,
     parse_products_list_response,
+    parse_add_product_to_cart_response,
 )
 
 
@@ -58,3 +59,20 @@ def _compare_product_dict_and_product(data: Dict, product: Product):
 
     formatted_price = meta['display_price']['with_tax']['formatted']
     assert formatted_price == product.formatted_price
+
+
+def test_add_product_to_cart_parsed_properly():
+    filepath = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        'data',
+        'add_product_to_cart_response.json',
+    )
+    with open(filepath, 'r') as f:
+        json_content = f.read()
+
+    data = json.loads(json_content)
+    data = data['data'][0]
+    product_in_cart = parse_add_product_to_cart_response(data)
+    assert product_in_cart.cart_id == data['id']
+    assert product_in_cart.product_id == data['product_id']
+    assert product_in_cart.quantity == data['quantity']
