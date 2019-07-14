@@ -78,7 +78,9 @@ def test_add_product_to_cart_successfully(mocker, monkeypatch, moltin_api_sessio
     assert product_in_cart.product_id == product_id
 
 
-def test_add_product_to_cart_insufficient_stock(mocker, monkeypatch, moltin_api_session):
+def test_add_product_to_cart_insufficient_stock(
+    mocker, monkeypatch, moltin_api_session
+):
     filepath = os.path.join(
         os.path.dirname(os.path.abspath(__file__)),
         'data',
@@ -94,7 +96,9 @@ def test_add_product_to_cart_insufficient_stock(mocker, monkeypatch, moltin_api_
         mock_response.status_code = 400
         mock_response.raise_for_status = mocker.MagicMock()
         mock_response.raise_for_status.side_effect = requests.HTTPError
-        mock_response.json = mocker.MagicMock(return_value=add_product_to_cart_failed_data)
+        mock_response.json = mocker.MagicMock(
+            return_value=add_product_to_cart_failed_data
+        )
         return mock_response
 
     monkeypatch.setattr('requests.Session.post', mock_post)

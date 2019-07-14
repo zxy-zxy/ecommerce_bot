@@ -11,6 +11,7 @@ from telegram.ext import (
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 from application.models import User
+from application.ecommerce_api.moltin_api.exceptions import MoltinApiError, MoltinError
 from application.ecommerce_api.moltin_api.moltin import MoltinApi
 from application.bot.utils import chunks
 
@@ -35,18 +36,21 @@ class TelegramBot:
 def check_callback_query_exists(func):
     """
     User ignored keyboard options and sent random string.
-    Let's return him back to the start menu
+    Let's return him back to the current state
     """
 
     @wraps(func)
     def wrapped(self, bot, update):
         query = update.callback_query
         if query is None:
+            user_id = update.message.chat_id
             bot.delete_message(
-                chat_id=update.message.chat_id,
+                chat_id=user_id,
                 message_id=update.message.message_id
             )
-            return 'HANDLE_MENU'
+            user = User(user_id)
+            user_state = user.get_state_from_db()
+            return user_state
         return func(self, bot, update)
 
     return wrapped
@@ -151,13 +155,17 @@ class TelegramBotHandlers:
         product_presentation = deserialize_product_presentation_from_callback(
             product_id)
 
-        self.moltin_api.add_product_to_cart(
-            chat_id,
-            product_presentation['id'],
-            quantity=int(product_presentation['qty'])
-        )
+        try:
+            self.moltin_api.add_product_to_cart(
+                chat_id,
+                product_presentation['id'],
+                quantity=int(product_presentation['qty'])
+            )
+        except MoltinApiError as e:
+            text = 'Cannot add item to card. Error occured: {}'.format(str(e))
+            self.show_menu(bot, chat_id, text)
+            return 'HANDLE_MENU'
 
-        self.moltin_api.get_cart(query.message.chat_id)
         text = 'Item has been successfully added to cart. Please, continue:'
         self.show_menu(bot, chat_id, text)
 
@@ -201,7 +209,7 @@ class TelegramBotHandlers:
 
         text = '{}\n{}\n{}'.format(
             product.name,
-            product.formatted_price,
+            product.formatted_price_with_tax,
             product.description
         )
 
@@ -239,6 +247,10 @@ class TelegramBotHandlers:
             )
 
     def show_cart(self, bot, chat_id):
+
+        cart_current_condition = self.moltin_api.get_cart(chat_id)
+        cart_products = self.moltin_api.get_cart_products(chat_id)
+
         bot.send_message(
             chat_id,
             'This is cart content',

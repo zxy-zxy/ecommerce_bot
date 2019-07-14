@@ -10,7 +10,7 @@ from application.models import Product
 def product():
     return Product(
         id=str(uuid.uuid4()),
-        formatted_price='$243.50',
+        formatted_price_with_tax='$243.50',
         name='New product',
         type='product type',
         description='New product',

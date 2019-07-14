@@ -7,7 +7,12 @@ from json import JSONDecodeError
 import requests
 from requests import Session
 
-from application.models import Product
+from application.models import (
+    Product,
+    ProductInCart,
+    File,
+    CartHeader
+)
 from application.ecommerce_api.moltin_api.exceptions import (
     MoltinApiError,
     MoltinUnexpectedFormatResponseError,
@@ -17,7 +22,8 @@ from application.ecommerce_api.moltin_api.parse import (
     parse_products_list_response,
     parse_product_response,
     parse_file_response,
-    parse_add_product_to_cart_response
+    parse_add_product_to_cart_response,
+    parse_cart_header_response,
 )
 
 logger = logging.getLogger(__name__)
@@ -26,9 +32,11 @@ logger = logging.getLogger(__name__)
 def access_token_required(func):
     @functools.wraps(func)
     def wrapped(self, *args, **kwargs):
-        if (self.access_token is None
+        if (
+                self.access_token is None
                 or self.access_token_expires_in is None
-                or self.access_token_expires_in < time.time() - 10):
+                or self.access_token_expires_in < time.time() - 10
+        ):
             self._update_access_token()
         return func(self, *args, **kwargs)
 
@@ -57,7 +65,7 @@ class MoltinApiSession(Session):
                 self.client_id,
                 self.client_secret,
                 self.access_token,
-                self.access_token_expires_in
+                self.access_token_expires_in,
             )
         )
         return str_repr
@@ -87,8 +95,11 @@ class MoltinApiSession(Session):
             error_title = error['title']
             error_detail = error['detail'] if 'detail' in error.keys() else None
 
-            logger.debug('json response from {} with status code {} : {}'.format(
-                url, response.status_code, response_dict))
+            logger.debug(
+                'json response from {} with status code {} : {}'.format(
+                    url, response.status_code, response_dict
+                )
+            )
 
             raise MoltinApiError(
                 response.url, error_status, error_title, error_detail
@@ -96,12 +107,16 @@ class MoltinApiSession(Session):
 
         try:
             response_dict = response.json()
-            logger.debug('json response from {} with status code {} : {}'.format(
-                url, response.status_code, response_dict))
+            logger.debug(
+                'json response from {} with status code {} : {}'.format(
+                    url, response.status_code, response_dict
+                )
+            )
             return response_dict['data']
         except (JSONDecodeError, KeyError) as e:
-            raise MoltinUnexpectedFormatResponseError('error: {}, data: {}'.format(
-                str(e), response)) from e
+            raise MoltinUnexpectedFormatResponseError(
+                'error: {}, data: {}'.format(str(e), response)
+            ) from e
 
     def _update_access_token(self):
 
@@ -163,16 +178,21 @@ class MoltinApi:
     def get_cart(self, cart_reference: str):
         url = MoltinApi.get_cart_url.format(cart_reference)
         data = self.session.get(url)
-        return data
+        return parse_cart_header_response(data)
 
     def get_cart_products(self, cart_reference: str):
         url = MoltinApi.cart_products_url.format(cart_reference)
         data = self.session.get(url)
         return data
 
-    def add_product_to_cart(self, cart_reference: str, product_id: str, quantity: int = 1):
+    def add_product_to_cart(
+            self, cart_reference: str, product_id: str, quantity: int = 1
+    ):
         url = MoltinApi.cart_products_url.format(cart_reference)
         data = self.session.post(
-            url, json={'data': {'quantity': quantity, 'type': 'cart_item', 'id': product_id}}
+            url,
+            json={
+                'data': {'quantity': quantity, 'type': 'cart_item', 'id': product_id}
+            },
         )
         return parse_add_product_to_cart_response(data[0])

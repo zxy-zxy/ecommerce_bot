@@ -1,0 +1,46 @@
+{
+  "data": {
+    "id": "360acb59-3fb7-4150-8066-ea54e850015b",
+    "type": "cart",
+    "links": {
+      "self": "https://api.moltin.com/v2/carts/1488"
+    },
+    "meta": {
+      "display_price": {
+        "with_tax": {
+          "amount": 55490,
+          "currency": "USD",
+          "formatted": "$554.90"
+        },
+        "without_tax": {
+          "amount": 55490,
+          "currency": "USD",
+          "formatted": "$554.90"
+        },
+        "tax": {
+          "amount": 0,
+          "currency": "USD",
+          "formatted": "$0.00"
+        }
+      },
+      "timestamps": {
+        "created_at": "2019-07-13T19:29:31Z",
+        "updated_at": "2019-07-13T19:29:31Z"
+      }
+    },
+    "relationships": {
+      "items": {
+        "data": [
+          {
+            "type": "cart_item",
+            "id": "1fb12fd9-eea1-4408-ada0-df21b9eadd42"
+          },
+          {
+            "type": "cart_item",
+            "id": "9dfd0457-9310-41e7-875b-880cfeaaf9c2"
+          }
+        ]
+      }
+    }
+  }
+}

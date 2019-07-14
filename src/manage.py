@@ -26,10 +26,16 @@ def main():
         app_config.MOLTIN_CLIENT_SECRET
     )
     moltin_api = MoltinApi(moltin_api_session)
-
-    telegram_bot = TelegramBot(app_config.TELEGRAM_BOT_TOKEN, moltin_api)
-    telegram_bot.start()
+    # moltin_api.get_products()
+    cart_id = '1488'
+    moltin_api.add_product_to_cart(cart_id, '66a35ee3-5912-4a86-a508-2887e56e97c9', 5)
+    moltin_api.add_product_to_cart(cart_id, 'f3efac3f-0c71-4e12-9ec1-11669ac8fafe', 2)
+    print(moltin_api.get_cart(cart_id))
+    print(moltin_api.get_cart_products(cart_id))
 
 
 if __name__ == '__main__':
     main()
+
+# 66a35ee3-5912-4a86-a508-2887e56e97c9
+# f3efac3f-0c71-4e12-9ec1-11669ac8fafe

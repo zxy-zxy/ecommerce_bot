@@ -1,0 +1,171 @@
+{
+  "data": [
+    {
+      "id": "9dfd0457-9310-41e7-875b-880cfeaaf9c2",
+      "type": "cart_item",
+      "product_id": "66a35ee3-5912-4a86-a508-2887e56e97c9",
+      "name": "Refined Wooden Tuna",
+      "description": "This is a description for refined wooden tuna!",
+      "sku": "REFINED-WOODEN-TUNA-JXRDWBFC",
+      "image": {
+        "mime_type": "",
+        "file_name": "",
+        "href": ""
+      },
+      "quantity": 10,
+      "manage_stock": false,
+      "unit_price": {
+        "amount": 4938,
+        "currency": "USD",
+        "includes_tax": true
+      },
+      "value": {
+        "amount": 49380,
+        "currency": "USD",
+        "includes_tax": false
+      },
+      "links": {
+        "product": "https://api.moltin.com/v2/products/66a35ee3-5912-4a86-a508-2887e56e97c9"
+      },
+      "meta": {
+        "display_price": {
+          "with_tax": {
+            "unit": {
+              "amount": 4938,
+              "currency": "USD",
+              "formatted": "$49.38"
+            },
+            "value": {
+              "amount": 49380,
+              "currency": "USD",
+              "formatted": "$493.80"
+            }
+          },
+          "without_tax": {
+            "unit": {
+              "amount": 4938,
+              "currency": "USD",
+              "formatted": "$49.38"
+            },
+            "value": {
+              "amount": 49380,
+              "currency": "USD",
+              "formatted": "$493.80"
+            }
+          },
+          "tax": {
+            "unit": {
+              "amount": 0,
+              "currency": "USD",
+              "formatted": "$0.00"
+            },
+            "value": {
+              "amount": 0,
+              "currency": "USD",
+              "formatted": "$0.00"
+            }
+          }
+        },
+        "timestamps": {
+          "created_at": "2019-07-13T19:29:31Z",
+          "updated_at": "2019-07-13T20:26:01Z"
+        }
+      }
+    },
+    {
+      "id": "1fb12fd9-eea1-4408-ada0-df21b9eadd42",
+      "type": "cart_item",
+      "product_id": "f3efac3f-0c71-4e12-9ec1-11669ac8fafe",
+      "name": "Generic Fresh Computer",
+      "description": "This is a description for generic fresh computer!",
+      "sku": "GENERIC-FRESH-COMPUTER-JXM3AWV0",
+      "image": {
+        "mime_type": "image/jpeg",
+        "file_name": "xxl-desktop-pc-98013994-5c4dcc47c9e77c0001380389.jpg",
+        "href": "https://s3-eu-west-1.amazonaws.com/bkt-svc-files-cmty-api-moltin-com/a9e9c138-a7f8-4e45-9258-e2ac077682d2/d7cc1728-cda6-48b9-877d-1687dc9b8adc.jpg"
+      },
+      "quantity": 4,
+      "manage_stock": false,
+      "unit_price": {
+        "amount": 15400,
+        "currency": "USD",
+        "includes_tax": true
+      },
+      "value": {
+        "amount": 61600,
+        "currency": "USD",
+        "includes_tax": true
+      },
+      "links": {
+        "product": "https://api.moltin.com/v2/products/f3efac3f-0c71-4e12-9ec1-11669ac8fafe"
+      },
+      "meta": {
+        "display_price": {
+          "with_tax": {
+            "unit": {
+              "amount": 15400,
+              "currency": "USD",
+              "formatted": "$154.00"
+            },
+            "value": {
+              "amount": 61600,
+              "currency": "USD",
+              "formatted": "$616.00"
+            }
+          },
+          "without_tax": {
+            "unit": {
+              "amount": 15400,
+              "currency": "USD",
+              "formatted": "$154.00"
+            },
+            "value": {
+              "amount": 61600,
+              "currency": "USD",
+              "formatted": "$616.00"
+            }
+          },
+          "tax": {
+            "unit": {
+              "amount": 0,
+              "currency": "USD",
+              "formatted": "$0.00"
+            },
+            "value": {
+              "amount": 0,
+              "currency": "USD",
+              "formatted": "$0.00"
+            }
+          }
+        },
+        "timestamps": {
+          "created_at": "2019-07-13T19:29:31Z",
+          "updated_at": "2019-07-13T20:26:01Z"
+        }
+      }
+    }
+  ],
+  "meta": {
+    "display_price": {
+      "with_tax": {
+        "amount": 110980,
+        "currency": "USD",
+        "formatted": "$1109.80"
+      },
+      "without_tax": {
+        "amount": 110980,
+        "currency": "USD",
+        "formatted": "$1109.80"
+      },
+      "tax": {
+        "amount": 0,
+        "currency": "USD",
+        "formatted": "$0.00"
+      }
+    },
+    "timestamps": {
+      "created_at": "2019-07-13T19:29:31Z",
+      "updated_at": "2019-07-13T20:26:01Z"
+    }
+  }
+}
