@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Dict
 import functools
 import time
 import logging
@@ -35,8 +35,8 @@ def access_token_required(func):
     @functools.wraps(func)
     def wrapped(self, *args, **kwargs):
         if (self.access_token is None
-                or self.access_token_expires_in is None
-                or self.access_token_expires_in < time.time() - 10):
+            or self.access_token_expires_in is None
+            or self.access_token_expires_in < time.time() - 10):
             self._update_access_token()
         return func(self, *args, **kwargs)
 
@@ -94,9 +94,9 @@ class MoltinApiSession(Session):
             response_dict = response.json()
 
             error = response_dict['errors'][0]
-            error_status = error['status']
-            error_title = error['title']
-            error_detail = error['detail'] if 'detail' in error.keys() else None
+            error_status = error.get('status', None)
+            error_title = error.get('title', None)
+            error_detail = error.get('detail', None)
 
             logger.debug(
                 'json response from {} with status code {} : {}'.format(
@@ -160,6 +160,7 @@ class MoltinApi:
     get_cart_url = 'v2/carts/{}'
     cart_products_url = 'v2/carts/{}/items'
     cart_product_url = 'v2/carts/{}/items/{}'
+    flow_url = '/v2/flows'
 
     def __init__(self, session: MoltinApiSession):
         self.session = session
@@ -210,4 +211,9 @@ class MoltinApi:
     def remove_item_from_cart(self, cart_reference: str, item_id: str) -> bool:
         url = MoltinApi.cart_product_url.format(cart_reference, item_id)
         self.session.delete(url)
+        return True
+
+    def create_flow(self, data: Dict) -> bool:
+        url = MoltinApi.flow_url
+        self.session.post(url, json={'data': data})
         return True

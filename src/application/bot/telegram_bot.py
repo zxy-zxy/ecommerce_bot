@@ -66,6 +66,8 @@ def check_callback_query_exists(func):
 class BotProcessor:
     CALLBACK_MENU = 'menu'
     CALLBACK_CART = 'cart'
+    CALLBACK_START_PAYMENT = 'start_payment'
+
     available_quantity_options = ['1 pc', '2 pcs', '5 pcs']
 
     @staticmethod
@@ -78,6 +80,12 @@ class BotProcessor:
     def get_button_menu():
         return InlineKeyboardButton(
             'Go to menu', callback_data=BotProcessor.CALLBACK_MENU
+        )
+
+    @staticmethod
+    def get_button_start_payment():
+        return InlineKeyboardButton(
+            'Go to payment', callback_data=BotProcessor.CALLBACK_START_PAYMENT
         )
 
     def __init__(self, moltin_api: MoltinApi, jinja_env: Environment):
@@ -106,14 +114,15 @@ class BotProcessor:
             'HANDLE_MENU': self.handle_menu,
             'HANDLE_PRODUCT': self.handle_product,
             'HANDLE_CART': self.handle_cart,
+            'HANDLE_START_PAYMENT': self.handle_start_payment,
         }
         state_handler = states_functions[user_state]
 
         try:
             next_state = state_handler(bot, update)
             user.save_state_to_db(next_state)
-        except Exception as e:
-            logger.error('A general exception occurred: {}'.format(str(e)))
+        except (MoltinApiError, MoltinError, Exception) as e:
+            logger.error('An general exception occurred: {}'.format(str(e)))
 
     def handle_start(self, bot, update):
 
@@ -199,11 +208,46 @@ class BotProcessor:
         if query.data == BotProcessor.CALLBACK_MENU:
             self.view_menu(bot, chat_id)
             return 'HANDLE_MENU'
+        elif query.data == BotProcessor.CALLBACK_START_PAYMENT:
+            self.view_start_payment_processing(bot, chat_id)
+            return 'HANDLE_START_PAYMENT'
 
         item_id = query.data
         self.moltin_api.remove_item_from_cart(chat_id, item_id)
         self.view_cart(bot, chat_id)
         return 'HANDLE_CART'
+
+    def handle_start_payment(self, bot, update):
+        if update.message:
+            chat_id = update.message.chat_id
+        else:
+            chat_id = update.callback_query.message.chat_id
+        users_reply = update.message.text
+
+        try:
+            self.moltin_api.create_flow(
+                data={
+                    'enabled': True,
+                    'description': 'A request from number {}'.format(users_reply),
+                    'slug': str(chat_id),
+                    'name': str(chat_id),
+                    'type': 'flow',
+                }
+            )
+        except (MoltinApiError, MoltinError) as e:
+            update.message.reply_text(
+                'Cannot process request now, please try again later.'
+            )
+            logger.error(str(e))
+            return 'HANDLE_START'
+
+        update.message.reply_text(
+            'You sent us this number: {}. Our team will contact you soon!'.format(
+                users_reply
+            )
+        )
+
+        return 'HANDLE_START'
 
     def view_menu(self, bot, chat_id, text=None):
 
@@ -272,11 +316,17 @@ class BotProcessor:
                 )
                 for product_in_cart in cart_content
             ],
-            [BotProcessor.get_button_menu()],
+            [BotProcessor.get_button_start_payment(), BotProcessor.get_button_menu()],
         ]
 
         reply_markup = InlineKeyboardMarkup(keyboard)
         bot.send_message(chat_id, output, reply_markup=reply_markup)
+
+    def view_start_payment_processing(self, bot, chat_id):
+        text = (
+            'Please, provide us your mobile number and we call you back in short time!'
+        )
+        bot.send_message(chat_id, text)
 
 
 def serialize_product_presentation(product, quantity_option):
