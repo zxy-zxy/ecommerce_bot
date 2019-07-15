@@ -2,19 +2,16 @@ import os
 import logging
 
 import import_string
-from dotenv import load_dotenv
 
 from application.ecommerce_api.moltin_api.moltin import MoltinApiSession, MoltinApi
 from application.database import RedisStorage
 from application.bot.telegram_bot import TelegramBot
+from config import setup_logging
 
 logger = logging.getLogger(__name__)
 
 
 def main():
-    load_dotenv(verbose=True)
-    from config import setup_logging
-
     app_config_name = os.getenv('APP_SETTINGS')
     app_config = import_string(app_config_name)
 
