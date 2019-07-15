@@ -11,10 +11,11 @@ from application.ecommerce_api.moltin_api.parse import (
     parse_products_list_response,
     parse_add_product_to_cart_response,
     parse_cart_header_response,
+    parse_cart_content_response,
 )
 
 
-def test_product_parsed_propely():
+def test_parse_product():
     filepath = os.path.join(
         os.path.dirname(os.path.abspath(__file__)), 'data', 'product_response.json'
     )
@@ -27,7 +28,7 @@ def test_product_parsed_propely():
     _compare_product_dict_and_product(data, product)
 
 
-def test_products_list_parsed_properly():
+def test_parse_products_list():
     filepath = os.path.join(
         os.path.dirname(os.path.abspath(__file__)),
         'data',
@@ -65,7 +66,7 @@ def _compare_product_dict_and_product(data: Dict, product: Product):
     assert formatted_price == product.formatted_price_with_tax
 
 
-def test_add_product_to_cart_parsed_properly():
+def test_parse_new_product_in_cart():
     filepath = os.path.join(
         os.path.dirname(os.path.abspath(__file__)),
         'data',
@@ -82,7 +83,7 @@ def test_add_product_to_cart_parsed_properly():
     assert product_in_cart.quantity == data['quantity']
 
 
-def test_get_current_cart_condition_parsed_properly():
+def test_parse_cart_header():
     filepath = os.path.join(
         os.path.dirname(os.path.abspath(__file__)), 'data', 'cart_header_response.json'
     )
@@ -109,5 +110,21 @@ def test_get_current_cart_condition_parsed_properly():
     assert price_from_file == cart_header.price
 
 
-def test_get_cart_content_response():
-    pass
+def test_parse_cart_content():
+    filepath = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), 'data', 'cart_content_response.json'
+    )
+    with open(filepath, 'r') as f:
+        json_content = f.read()
+
+    cart_content_data = json.loads(json_content)
+    cart_content_data = cart_content_data['data']
+    cart_content_products = parse_cart_content_response(cart_content_data)
+
+    for cart_content_obj, cart_content_product in zip(
+        cart_content_data, cart_content_products
+    ):
+        assert cart_content_obj['id'] == cart_content_product.id
+        assert cart_content_obj['product_id'] == cart_content_product.product_id
+        assert cart_content_obj['description'] == cart_content_product.description
+        assert cart_content_obj['sku'] == cart_content_product.sku

@@ -4,9 +4,9 @@ from datetime import datetime
 from application.models import (
     Product,
     File,
-    AddedProductToCart,
+    NewProductInCart,
     CartHeader,
-    ProductInCart,
+    CartContentProduct,
 )
 
 
@@ -31,7 +31,9 @@ def parse_product_response(dct: Dict) -> Union[None, Product]:
 
     product_meta = dct['meta']
     try:
-        formatted_price_with_tax = product_meta['display_price']['with_tax']['formatted']
+        formatted_price_with_tax = product_meta['display_price']['with_tax'][
+            'formatted'
+        ]
     except KeyError:
         formatted_price_with_tax = None
 
@@ -55,7 +57,7 @@ def parse_product_response(dct: Dict) -> Union[None, Product]:
         slug=dct['slug'],
         formatted_price_with_tax=formatted_price_with_tax,
         currency=currency,
-        main_image_id=main_image_id
+        main_image_id=main_image_id,
     )
     return product
 
@@ -65,15 +67,13 @@ def parse_file_response(dct: Dict) -> File:
         id=dct['id'],
         link=dct['link']['href'],
         type=dct['type'],
-        file_name=dct['file_name']
+        file_name=dct['file_name'],
     )
 
 
-def parse_add_product_to_cart_response(dct: Dict) -> AddedProductToCart:
-    return AddedProductToCart(
-        cart_id=dct['id'],
-        product_id=dct['product_id'],
-        quantity=dct['quantity']
+def parse_add_product_to_cart_response(dct: Dict) -> NewProductInCart:
+    return NewProductInCart(
+        cart_id=dct['id'], product_id=dct['product_id'], quantity=dct['quantity']
     )
 
 
@@ -81,21 +81,42 @@ def parse_cart_header_response(dct: Dict) -> CartHeader:
     meta = dct['meta']
     created_at_datetime_str = meta['timestamps']['created_at']
     try:
-        created_at = datetime.strptime(
-            created_at_datetime_str, '%Y-%m-%dT%H:%M:%S%z')
+        created_at = datetime.strptime(created_at_datetime_str, '%Y-%m-%dT%H:%M:%S%z')
     except ValueError:
         created_at = None
     cart_header = CartHeader(
         id=dct['id'],
         formatted_price_with_tax=meta['display_price']['with_tax']['formatted'],
         currency=meta['display_price']['with_tax']['currency'],
-        created_at=created_at
+        created_at=created_at,
     )
     return cart_header
 
 
-def parse_cart_content_response(cart_content: List[Dict]) -> List[ProductInCart]:
-    for product_in_cart_obj in cart_content:
-        product_in_cart = ProductInCart(
-
+def parse_cart_content_response(cart_content: List[Dict]) -> List[CartContentProduct]:
+    result = []
+    for product_in_cart_dct in cart_content:
+        product_meta = product_in_cart_dct['meta']
+        product_display_price = product_meta['display_price']
+        value = product_in_cart_dct['value']['amount'] / 100
+        formatted_price_with_tax = product_display_price['with_tax']['unit'][
+            'formatted'
+        ]
+        formatted_value_with_tax = product_display_price['with_tax']['value'][
+            'formatted'
+        ]
+        currency = product_display_price['with_tax']['unit']['currency']
+        cart_content_product = CartContentProduct(
+            id=product_in_cart_dct['id'],
+            product_id=product_in_cart_dct['product_id'],
+            quantity=product_in_cart_dct['quantity'],
+            value=value,
+            currency=currency,
+            formatted_price_with_tax=formatted_price_with_tax,
+            formatted_value_with_tax=formatted_value_with_tax,
+            description=product_in_cart_dct['description'],
+            sku=product_in_cart_dct['sku'],
+            name=product_in_cart_dct['name'],
         )
+        result.append(cart_content_product)
+    return result

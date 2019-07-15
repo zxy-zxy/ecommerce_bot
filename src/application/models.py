@@ -8,12 +8,6 @@ from application.database import RedisStorage
 
 
 @dataclass
-class RawData:
-    data: Dict
-    meta: Dict
-
-
-@dataclass
 class Product:
     id: str
     type: str
@@ -39,7 +33,7 @@ class File:
 
 
 @dataclass
-class AddedProductToCart:
+class NewProductInCart:
     cart_id: str
     product_id: str
     quantity: int
@@ -58,12 +52,16 @@ class CartHeader:
 
 
 @dataclass
-class ProductInCart:
-    cart_id: str
+class CartContentProduct:
+    id: str
     product_id: str
+    sku: str
+    name: str
+    description: str
     quantity: int
     value: Decimal
     formatted_price_with_tax: str
+    formatted_value_with_tax: str
     currency: str
 
 

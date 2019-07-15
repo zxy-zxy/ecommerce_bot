@@ -9,9 +9,10 @@ from requests import Session
 
 from application.models import (
     Product,
-    ProductInCart,
+    NewProductInCart,
     File,
-    CartHeader
+    CartHeader,
+    CartContentProduct,
 )
 from application.ecommerce_api.moltin_api.exceptions import (
     MoltinApiError,
@@ -24,6 +25,7 @@ from application.ecommerce_api.moltin_api.parse import (
     parse_file_response,
     parse_add_product_to_cart_response,
     parse_cart_header_response,
+    parse_cart_content_response,
 )
 
 logger = logging.getLogger(__name__)
@@ -32,11 +34,9 @@ logger = logging.getLogger(__name__)
 def access_token_required(func):
     @functools.wraps(func)
     def wrapped(self, *args, **kwargs):
-        if (
-                self.access_token is None
+        if (self.access_token is None
                 or self.access_token_expires_in is None
-                or self.access_token_expires_in < time.time() - 10
-        ):
+                or self.access_token_expires_in < time.time() - 10):
             self._update_access_token()
         return func(self, *args, **kwargs)
 
@@ -76,6 +76,9 @@ class MoltinApiSession(Session):
     def post(self, url, data=None, json=None, **kwargs):
         return self._make_request('post', url, data=data, json=json, **kwargs)
 
+    def delete(self, url, **kwargs):
+        return self._make_request('delete', url, **kwargs)
+
     @access_token_required
     def _make_request(self, method, url, **kwargs):
         method = getattr(super(MoltinApiSession, self), method)
@@ -112,7 +115,7 @@ class MoltinApiSession(Session):
                     url, response.status_code, response_dict
                 )
             )
-            return response_dict['data']
+            return response_dict
         except (JSONDecodeError, KeyError) as e:
             raise MoltinUnexpectedFormatResponseError(
                 'error: {}, data: {}'.format(str(e), response)
@@ -156,43 +159,55 @@ class MoltinApi:
     get_file_url = 'v2/files/{}'
     get_cart_url = 'v2/carts/{}'
     cart_products_url = 'v2/carts/{}/items'
+    cart_product_url = 'v2/carts/{}/items/{}'
 
     def __init__(self, session: MoltinApiSession):
         self.session = session
 
     def get_products(self, limit=100) -> List[Product]:
         params = {'page[limit]': limit}
-        data = self.session.get(MoltinApi.get_products_list_url, params=params)
-        return parse_products_list_response(data)
+        data_dct = self.session.get(MoltinApi.get_products_list_url, params=params)
+        products_dct = data_dct['data']
+        return parse_products_list_response(products_dct)
 
     def get_product_by_id(self, product_id: str) -> Product:
         url = MoltinApi.get_product_url.format(product_id)
-        data = self.session.get(url)
-        return parse_product_response(data)
+        data_dct = self.session.get(url)
+        product_dct = data_dct['data']
+        return parse_product_response(product_dct)
 
-    def get_file_by_id(self, file_id: str):
+    def get_file_by_id(self, file_id: str) -> File:
         url = MoltinApi.get_file_url.format(file_id)
-        data = self.session.get(url)
-        return parse_file_response(data)
+        data_dct = self.session.get(url)
+        file_dct = data_dct['data']
+        return parse_file_response(file_dct)
 
-    def get_cart(self, cart_reference: str):
+    def get_cart(self, cart_reference: str) -> CartHeader:
         url = MoltinApi.get_cart_url.format(cart_reference)
-        data = self.session.get(url)
-        return parse_cart_header_response(data)
+        data_dct = self.session.get(url)
+        cart_header_dct = data_dct['data']
+        return parse_cart_header_response(cart_header_dct)
 
-    def get_cart_products(self, cart_reference: str):
+    def get_cart_products(self, cart_reference: str) -> List[CartContentProduct]:
         url = MoltinApi.cart_products_url.format(cart_reference)
-        data = self.session.get(url)
-        return data
+        data_dct = self.session.get(url)
+        cart_content = data_dct['data']
+        return parse_cart_content_response(cart_content)
 
     def add_product_to_cart(
             self, cart_reference: str, product_id: str, quantity: int = 1
-    ):
+    ) -> NewProductInCart:
         url = MoltinApi.cart_products_url.format(cart_reference)
-        data = self.session.post(
+        data_dct = self.session.post(
             url,
             json={
                 'data': {'quantity': quantity, 'type': 'cart_item', 'id': product_id}
             },
         )
-        return parse_add_product_to_cart_response(data[0])
+        product_in_cart_dct = data_dct['data']
+        return parse_add_product_to_cart_response(product_in_cart_dct[0])
+
+    def remove_item_from_cart(self, cart_reference: str, item_id: str) -> bool:
+        url = MoltinApi.cart_product_url.format(cart_reference, item_id)
+        self.session.delete(url)
+        return True

@@ -19,4 +19,5 @@ class MoltinApiError(MoltinError):
 
     def __str__(self):
         return 'status: {}, title: {}, detail: {} from {}'.format(
-            self.code, self.title, self.detail, self.url)
+            self.code, self.title, self.detail, self.url
+        )
