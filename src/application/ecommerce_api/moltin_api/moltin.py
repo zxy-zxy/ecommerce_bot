@@ -35,8 +35,8 @@ def access_token_required(func):
     @functools.wraps(func)
     def wrapped(self, *args, **kwargs):
         if (self.access_token is None
-            or self.access_token_expires_in is None
-            or self.access_token_expires_in < time.time() - 10):
+                or self.access_token_expires_in is None
+                or self.access_token_expires_in < time.time() - 10):
             self._update_access_token()
         return func(self, *args, **kwargs)
 

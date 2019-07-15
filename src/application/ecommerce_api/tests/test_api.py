@@ -106,5 +106,5 @@ def test_add_product_to_cart_insufficient_stock(
     cart_id = 'b295a019-0fb9-4460-9e6b-1ee8d1c5d7cd'
     product_id = '34274205-a329-432d-85fb-808eae5cb792'
     quantity = 1
-    with pytest.raises(MoltinApiError) as e:
+    with pytest.raises(MoltinApiError):
         moltin_api.add_product_to_cart(cart_id, product_id, quantity)
