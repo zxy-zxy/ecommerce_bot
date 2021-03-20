@@ -8,4 +8,4 @@ black==19.3b0
 responses==0.10.6
 requests-mock==1.6.0
 import-string==0.1.0
-jinja2==2.10.1
+jinja2==2.11.3
